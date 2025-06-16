@@ -49,7 +49,7 @@ namespace ProyectoBD.Screens
         {
             try
             {
-                var sistemas = conexionSql.ObtenerSistemas();
+                var sistemas = conexionSql.ObtenerSistemasSistema();
                 cmbSistemas.DataSource = sistemas;
                 cmbSistemas.DisplayMember = "NombreSistema";
                 cmbSistemas.ValueMember = "Id";
@@ -111,6 +111,11 @@ namespace ProyectoBD.Screens
             FRMPantalla frmPantallas = new FRMPantalla(_idUsuario);
             frmPantallas.Show();
             this.Hide();
+        }
+
+        private void cmbSistemas_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
         }
     }
 }

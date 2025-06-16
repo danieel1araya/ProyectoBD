@@ -1,8 +1,10 @@
-﻿using System;
+﻿using BAL;
+using Oracle.ManagedDataAccess.Client;
+using Oracle.ManagedDataAccess.Types;
+using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
-using BAL;
+
 
 namespace DAL
 {
@@ -20,17 +22,17 @@ namespace DAL
         {
             try
             {
-                using (SqlConnection connection = new SqlConnection(StringConexion))
+                using (OracleConnection connection = new OracleConnection(StringConexion))
                 {
                     connection.Open();
 
-                    string query = "SELECT COUNT(*) FROM Sistemas WHERE NombreSistema = @nombre";
+                    string query = "SELECT COUNT(*) FROM Sistemas WHERE NombreSistema = :nombre";
 
-                    using (SqlCommand command = new SqlCommand(query, connection))
+                    using (OracleCommand command = new OracleCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@nombre", nombreSistema);
+                        command.Parameters.Add(new OracleParameter("nombre", nombreSistema));
 
-                        int count = (int)command.ExecuteScalar();
+                        int count = Convert.ToInt32(command.ExecuteScalar());
                         return count > 0;
                     }
                 }
@@ -47,15 +49,15 @@ namespace DAL
 
             try
             {
-                using (SqlConnection connection = new SqlConnection(StringConexion))
+                using (OracleConnection connection = new OracleConnection(StringConexion))
                 {
                     connection.Open();
 
                     string query = "SELECT IDSistema, NombreSistema FROM Sistemas";
 
-                    using (SqlCommand command = new SqlCommand(query, connection))
+                    using (OracleCommand command = new OracleCommand(query, connection))
                     {
-                        using (SqlDataReader reader = command.ExecuteReader())
+                        using (OracleDataReader reader = command.ExecuteReader())
                         {
                             while (reader.Read())
                             {
@@ -78,35 +80,78 @@ namespace DAL
             return sistemas;
         }
 
+
+        public List<Sistema> ObtenerSistemasSistema()
+        {
+            List<Sistema> sistemas = new List<Sistema>();
+
+            try
+            {
+                using (OracleConnection connection = new OracleConnection(StringConexion))
+                {
+                    connection.Open();
+
+                    string query = "SELECT IDSistema, NombreSistema FROM Sistemas WHERE NombreSistema <> :nombreExcluido";
+
+                    using (OracleCommand command = new OracleCommand(query, connection))
+                    {
+                        command.Parameters.Add(new OracleParameter("nombreExcluido", "Seguridad"));
+
+                        using (OracleDataReader reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                Sistema sistema = new Sistema
+                                {
+                                    Id = reader.GetInt32(0),
+                                    NombreSistema = reader.GetString(1)
+                                };
+                                sistemas.Add(sistema);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al obtener sistemas: " + ex.Message);
+            }
+
+            return sistemas;
+        }
+
+
         public bool AgregarSistema(Sistema sistema, int idUsuario)
         {
             try
             {
-                using (SqlConnection connection = new SqlConnection(StringConexion))
+                using (OracleConnection connection = new OracleConnection(StringConexion))
                 {
                     connection.Open();
 
-                    SqlTransaction transaction = connection.BeginTransaction();
+                    OracleTransaction transaction = connection.BeginTransaction();
 
                     try
                     {
-                        string query = "INSERT INTO Sistemas (NombreSistema) VALUES (@nombre)";
+                        string query = "INSERT INTO Sistemas (NombreSistema) VALUES (:nombre)";
 
-                        using (SqlCommand command = new SqlCommand(query, connection, transaction))
+                        using (OracleCommand command = new OracleCommand(query, connection))
                         {
-                            command.Parameters.AddWithValue("@nombre", sistema.NombreSistema);
+                            command.Transaction = transaction;
+                            command.Parameters.Add(new OracleParameter("nombre", sistema.NombreSistema));
                             int filasAfectadas = command.ExecuteNonQuery();
 
                             if (filasAfectadas > 0)
                             {
                                 // Registrar en bitácora
                                 string detalle = $"Se agregó el sistema: {sistema.NombreSistema}";
-                                string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (@idUsuario, @detalles, GETDATE())";
+                                string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (:idUsuario, :detalles, SYSDATE)";
 
-                                using (SqlCommand cmd = new SqlCommand(bitacora, connection, transaction))
+                                using (OracleCommand cmd = new OracleCommand(bitacora, connection))
                                 {
-                                    cmd.Parameters.AddWithValue("@idUsuario", idUsuario);
-                                    cmd.Parameters.AddWithValue("@detalles", detalle);
+                                    cmd.Transaction = transaction;
+                                    cmd.Parameters.Add(new OracleParameter("idUsuario", idUsuario));
+                                    cmd.Parameters.Add(new OracleParameter("detalles", detalle));
                                     cmd.ExecuteNonQuery();
                                 }
                                 transaction.Commit();
@@ -133,41 +178,44 @@ namespace DAL
             }
         }
 
+
         public bool ActualizarSistema(Sistema sistema, int idUsuario)
         {
             try
             {
-                using (SqlConnection conn = new SqlConnection(StringConexion))
+                using (OracleConnection conn = new OracleConnection(StringConexion))
                 {
                     conn.Open();
 
-                    SqlTransaction transaction = conn.BeginTransaction();
+                    OracleTransaction transaction = conn.BeginTransaction();
 
                     try
                     {
-                        string query = "UPDATE Sistemas SET NombreSistema = @nombre WHERE IDSistema = @id";
+                        string query = "UPDATE Sistemas SET NombreSistema = :nombre WHERE IDSistema = :id";
 
-                        using (SqlCommand cmd = new SqlCommand(query, conn, transaction))
+                        using (OracleCommand cmd = new OracleCommand(query, conn))
                         {
-                            cmd.Parameters.AddWithValue("@nombre", sistema.NombreSistema);
-                            cmd.Parameters.AddWithValue("@id", sistema.Id);
+                            cmd.Transaction = transaction;
+                            cmd.Parameters.Add(new OracleParameter("nombre", sistema.NombreSistema));
+                            cmd.Parameters.Add(new OracleParameter("id", sistema.Id));
                             int filasAfectadas = cmd.ExecuteNonQuery();
 
                             if (filasAfectadas > 0)
                             {
-                                // Registramos en bitácora
+                                // Registrar en bitácora
                                 string detalle = $"Se actualizó el sistema {sistema.NombreSistema} (Id:{sistema.Id})";
 
-                                string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (@idUsuario, @detalles, GETDATE())";
+                                string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (:idUsuario, :detalles, SYSDATE)";
 
-                                using (SqlCommand cmdBitacora = new SqlCommand(bitacora, conn, transaction))
+                                using (OracleCommand cmdBitacora = new OracleCommand(bitacora, conn))
                                 {
-                                    cmdBitacora.Parameters.AddWithValue("@idUsuario", idUsuario);
-                                    cmdBitacora.Parameters.AddWithValue("@detalles", detalle);
+                                    cmdBitacora.Transaction = transaction;
+                                    cmdBitacora.Parameters.Add(new OracleParameter("idUsuario", idUsuario));
+                                    cmdBitacora.Parameters.Add(new OracleParameter("detalles", detalle));
                                     cmdBitacora.ExecuteNonQuery();
                                 }
-                                transaction.Commit();
 
+                                transaction.Commit();
                                 return true;
                             }
                             else
@@ -194,49 +242,32 @@ namespace DAL
         {
             try
             {
-                using (SqlConnection connection = new SqlConnection(StringConexion))
+                using (OracleConnection connection = new OracleConnection(StringConexion))
                 {
                     connection.Open();
 
-                    SqlTransaction transaction = connection.BeginTransaction();
-
-                    try
+                    using (OracleCommand cmd = new OracleCommand("SP_EliminarSistema", connection))
                     {
-                        string query = "DELETE FROM Sistemas WHERE IDSistema = @id";
+                        cmd.CommandType = CommandType.StoredProcedure;
 
-                        using (SqlCommand cmd = new SqlCommand(query, connection, transaction))
+                        cmd.Parameters.Add("p_idSistema", OracleDbType.Int32).Value = idSistema;
+                        cmd.Parameters.Add("p_idUsuario", OracleDbType.Int32).Value = idUsuario;
+                        cmd.Parameters.Add("p_resultado", OracleDbType.Int32).Direction = ParameterDirection.Output;
+                        cmd.Parameters.Add("p_mensaje", OracleDbType.Varchar2, 4000).Direction = ParameterDirection.Output;
+
+                        cmd.ExecuteNonQuery();
+
+                        int resultado = int.Parse(cmd.Parameters["p_resultado"].Value.ToString());
+                        string mensaje = cmd.Parameters["p_mensaje"].Value.ToString();
+
+                        if (resultado == 1)
                         {
-                            cmd.Parameters.AddWithValue("@id", idSistema);
-                            int filasAfectadas = cmd.ExecuteNonQuery();
-
-                            if (filasAfectadas > 0)
-                            {
-                                // Registramos en bitácora
-                                string detalle = $"Se eliminó el sistema con Id:{idSistema}";
-
-                                string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (@idUsuario, @detalles, GETDATE())";
-
-                                using (SqlCommand cmdBitacora = new SqlCommand(bitacora, connection, transaction))
-                                {
-                                    cmdBitacora.Parameters.AddWithValue("@idUsuario", idUsuario);
-                                    cmdBitacora.Parameters.AddWithValue("@detalles", detalle);
-                                    cmdBitacora.ExecuteNonQuery();
-                                }
-                                transaction.Commit();
-
-                                return true;
-                            }
-                            else
-                            {
-                                transaction.Rollback();
-                                return false;
-                            }
+                            return true;
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        transaction.Rollback();
-                        throw new Exception("Error al eliminar sistema: " + ex.Message);
+                        else
+                        {
+                            throw new Exception(mensaje);
+                        }
                     }
                 }
             }
@@ -247,25 +278,27 @@ namespace DAL
         }
 
 
-        // FIN SISTEMAS
 
-        // INICIO USUARIOS
+
+
+
+
 
         public bool UsuarioExiste(string usuario)
         {
             try
             {
-                using (SqlConnection connection = new SqlConnection(StringConexion))
+                using (OracleConnection connection = new OracleConnection(StringConexion))
                 {
                     connection.Open();
 
-                    string query = "SELECT COUNT(*) FROM Usuarios WHERE Usuario = @usuario";
+                    string query = "SELECT COUNT(*) FROM Usuarios WHERE Usuario = :usuario";
 
-                    using (SqlCommand command = new SqlCommand(query, connection))
+                    using (OracleCommand command = new OracleCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@usuario", usuario);
+                        command.Parameters.Add(new OracleParameter("usuario", usuario));
 
-                        int count = (int)command.ExecuteScalar();
+                        int count = Convert.ToInt32(command.ExecuteScalar());
                         return count > 0;
                     }
                 }
@@ -276,23 +309,28 @@ namespace DAL
             }
         }
 
-
         public bool ValidarCredenciales(string usuario, string contrasena)
         {
             try
             {
-                using (SqlConnection connection = new SqlConnection(StringConexion))
+                using (OracleConnection connection = new OracleConnection(StringConexion))
                 {
                     connection.Open();
 
-                    using (SqlCommand command = new SqlCommand("SP_ValidarCredenciales", connection))
+                    using (OracleCommand command = new OracleCommand("SP_ValidarCredenciales", connection))
                     {
                         command.CommandType = CommandType.StoredProcedure;
 
-                        command.Parameters.AddWithValue("@Usuario", usuario);
-                        command.Parameters.AddWithValue("@Contrasena", contrasena);
+                        command.Parameters.Add(new OracleParameter("Usuario", OracleDbType.Varchar2, usuario, ParameterDirection.Input));
+                        command.Parameters.Add(new OracleParameter("Contrasena", OracleDbType.Varchar2, contrasena, ParameterDirection.Input));
 
-                        int resultado = (int)command.ExecuteScalar();
+                        OracleParameter resultadoParam = new OracleParameter("Resultado", OracleDbType.Int32);
+                        resultadoParam.Direction = ParameterDirection.Output;
+                        command.Parameters.Add(resultadoParam);
+
+                        command.ExecuteNonQuery();
+
+                        int resultado = Convert.ToInt32(resultadoParam.Value.ToString());
 
                         return resultado == 1;
                     }
@@ -304,20 +342,22 @@ namespace DAL
             }
         }
 
+
+
         public void InsertarBitacora(int idUsuario, string detalle)
         {
             try
             {
-                using (SqlConnection connection = new SqlConnection(StringConexion))
+                using (OracleConnection connection = new OracleConnection(StringConexion))
                 {
                     connection.Open();
 
-                    string query = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (@IdUsuario, @Detalles, GETDATE())";
+                    string query = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (:IdUsuario, :Detalles, SYSDATE)";
 
-                    using (SqlCommand cmd = new SqlCommand(query, connection))
+                    using (OracleCommand cmd = new OracleCommand(query, connection))
                     {
-                        cmd.Parameters.AddWithValue("@IdUsuario", idUsuario);
-                        cmd.Parameters.AddWithValue("@Detalles", detalle);
+                        cmd.Parameters.Add(new OracleParameter("IdUsuario", idUsuario));
+                        cmd.Parameters.Add(new OracleParameter("Detalles", detalle));
 
                         cmd.ExecuteNonQuery();
                     }
@@ -330,21 +370,22 @@ namespace DAL
         }
 
 
+
         public int ObtenerIdUsuario(string nombreUsuario)
         {
             int idUsuario = -1;
 
             try
             {
-                using (SqlConnection connection = new SqlConnection(StringConexion))
+                using (OracleConnection connection = new OracleConnection(StringConexion))
                 {
                     connection.Open();
 
-                    string query = "SELECT IdUsuario FROM Usuarios WHERE Usuario = @usuario";
+                    string query = "SELECT IdUsuario FROM Usuarios WHERE Usuario = :usuario";
 
-                    using (SqlCommand cmd = new SqlCommand(query, connection))
+                    using (OracleCommand cmd = new OracleCommand(query, connection))
                     {
-                        cmd.Parameters.AddWithValue("@usuario", nombreUsuario);
+                        cmd.Parameters.Add("usuario", OracleDbType.Varchar2).Value = nombreUsuario;
 
                         object result = cmd.ExecuteScalar();
 
@@ -362,20 +403,21 @@ namespace DAL
             return idUsuario;
         }
 
-
         public List<User> ObtenerUsuarios()
         {
             List<User> usuarios = new List<User>();
 
             try
             {
-                using (SqlConnection connection = new SqlConnection(StringConexion))
+                using (OracleConnection connection = new OracleConnection(StringConexion))
                 {
                     connection.Open();
 
-                    using (SqlCommand command = new SqlCommand("SELECT TOP (1000) [IDUsuario], [Usuario], [Contrasena], [Activo] FROM [BDProyecto].[dbo].[Usuarios]", connection))
+                    string query = "SELECT IdUsuario, Usuario, Contrasena, Activo FROM Usuarios WHERE ROWNUM <= 1000";
+
+                    using (OracleCommand command = new OracleCommand(query, connection))
                     {
-                        using (SqlDataReader reader = command.ExecuteReader())
+                        using (OracleDataReader reader = command.ExecuteReader())
                         {
                             while (reader.Read())
                             {
@@ -400,37 +442,41 @@ namespace DAL
             return usuarios;
         }
 
-
         public bool AgregarUsuario(User usuario, int idAdmin)
         {
             try
             {
-                using (SqlConnection connection = new SqlConnection(StringConexion))
+                using (OracleConnection connection = new OracleConnection(StringConexion))
                 {
                     connection.Open();
-                    SqlTransaction transaction = connection.BeginTransaction();
+                    OracleTransaction transaction = connection.BeginTransaction();
 
                     try
                     {
-                        string query = "INSERT INTO Usuarios (Usuario, Contrasena, Activo) VALUES (@Usuario, @Contrasena, @Activo)";
+                        string query = "INSERT INTO Usuarios (Usuario, Contrasena, Activo) VALUES (:usuario, :contrasena, :activo)";
 
-                        using (SqlCommand command = new SqlCommand(query, connection, transaction))
+                        using (OracleCommand command = new OracleCommand(query, connection))
                         {
-                            command.Parameters.AddWithValue("@Usuario", usuario.Usuario);
-                            command.Parameters.AddWithValue("@Contrasena", usuario.Contrasena);
-                            command.Parameters.AddWithValue("@Activo", usuario.Activo);
+                            command.Transaction = transaction;
+
+                            command.Parameters.Add("usuario", OracleDbType.Varchar2).Value = usuario.Usuario;
+                            command.Parameters.Add("contrasena", OracleDbType.Varchar2).Value = usuario.Contrasena;
+                            command.Parameters.Add("activo", OracleDbType.Int32).Value = usuario.Activo;
 
                             int filasAfectadas = command.ExecuteNonQuery();
 
                             if (filasAfectadas > 0)
                             {
                                 string detalle = $"Se agregó el usuario: {usuario.Usuario}";
-                                string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (@idUsuario, @detalles, GETDATE())";
+                                string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (:idUsuario, :detalles, SYSDATE)";
 
-                                using (SqlCommand cmdBitacora = new SqlCommand(bitacora, connection, transaction))
+                                using (OracleCommand cmdBitacora = new OracleCommand(bitacora, connection))
                                 {
-                                    cmdBitacora.Parameters.AddWithValue("@idUsuario", idAdmin);
-                                    cmdBitacora.Parameters.AddWithValue("@detalles", detalle);
+                                    cmdBitacora.Transaction = transaction;
+
+                                    cmdBitacora.Parameters.Add("idUsuario", OracleDbType.Int32).Value = idAdmin;
+                                    cmdBitacora.Parameters.Add("detalles", OracleDbType.Varchar2).Value = detalle;
+
                                     cmdBitacora.ExecuteNonQuery();
                                 }
                                 transaction.Commit();
@@ -460,33 +506,38 @@ namespace DAL
         {
             try
             {
-                using (SqlConnection conn = new SqlConnection(StringConexion))
+                using (OracleConnection conn = new OracleConnection(StringConexion))
                 {
                     conn.Open();
-                    SqlTransaction transaction = conn.BeginTransaction();
+                    OracleTransaction transaction = conn.BeginTransaction();
 
                     try
                     {
-                        string query = "UPDATE Usuarios SET Usuario = @usuario, Contrasena = @contrasena, Activo = @activo WHERE IDUsuario = @id";
+                        string query = "UPDATE Usuarios SET Usuario = :usuario, Contrasena = :contrasena, Activo = :activo WHERE IDUsuario = :id";
 
-                        using (SqlCommand cmd = new SqlCommand(query, conn, transaction))
+                        using (OracleCommand cmd = new OracleCommand(query, conn))
                         {
-                            cmd.Parameters.AddWithValue("@usuario", user.Usuario);
-                            cmd.Parameters.AddWithValue("@contrasena", user.Contrasena);
-                            cmd.Parameters.AddWithValue("@activo", user.Activo);
-                            cmd.Parameters.AddWithValue("@id", user.Id);
+                            cmd.Transaction = transaction;
+
+                            cmd.Parameters.Add("usuario", OracleDbType.Varchar2).Value = user.Usuario;
+                            cmd.Parameters.Add("contrasena", OracleDbType.Varchar2).Value = user.Contrasena;
+                            cmd.Parameters.Add("activo", OracleDbType.Int32).Value = user.Activo;
+                            cmd.Parameters.Add("id", OracleDbType.Int32).Value = user.Id;
 
                             int filasAfectadas = cmd.ExecuteNonQuery();
 
                             if (filasAfectadas > 0)
                             {
                                 string detalle = $"Se actualizó el usuario: {user.Usuario} (Id:{user.Id})";
-                                string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (@idUsuario, @detalles, GETDATE())";
+                                string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (:idUsuario, :detalles, SYSDATE)";
 
-                                using (SqlCommand cmdBitacora = new SqlCommand(bitacora, conn, transaction))
+                                using (OracleCommand cmdBitacora = new OracleCommand(bitacora, conn))
                                 {
-                                    cmdBitacora.Parameters.AddWithValue("@idUsuario", idAdmin);
-                                    cmdBitacora.Parameters.AddWithValue("@detalles", detalle);
+                                    cmdBitacora.Transaction = transaction;
+
+                                    cmdBitacora.Parameters.Add("idUsuario", OracleDbType.Int32).Value = idAdmin;
+                                    cmdBitacora.Parameters.Add("detalles", OracleDbType.Varchar2).Value = detalle;
+
                                     cmdBitacora.ExecuteNonQuery();
                                 }
                                 transaction.Commit();
@@ -512,62 +563,47 @@ namespace DAL
             }
         }
 
-        public bool EliminarUsuario(int idUsuario, int idAdmin)
+        public bool EliminarUsuario(int idUsuarioEliminar, int idAdmin, out string mensaje)
         {
-            try
+            mensaje = "";
+
+            using (OracleConnection connection = new OracleConnection(StringConexion))
             {
-                using (SqlConnection connection = new SqlConnection(StringConexion))
+                connection.Open();
+
+                using (OracleCommand cmd = new OracleCommand("SP_EliminarUsuario", connection))
                 {
-                    connection.Open();
-                    SqlTransaction transaction = connection.BeginTransaction();
+                    cmd.CommandType = CommandType.StoredProcedure;
 
-                    try
+                    // Parámetros de entrada
+                    cmd.Parameters.Add("p_idUsuario", OracleDbType.Int32).Value = idUsuarioEliminar;
+                    cmd.Parameters.Add("p_idAdmin", OracleDbType.Int32).Value = idAdmin;
+
+                    // Parámetros de salida
+                    OracleParameter p_resultado = new OracleParameter("p_resultado", OracleDbType.Int32)
                     {
-                        string query = "DELETE FROM Usuarios WHERE IDUsuario = @id";
-
-                        using (SqlCommand command = new SqlCommand(query, connection, transaction))
-                        {
-                            command.Parameters.AddWithValue("@id", idUsuario);
-
-                            int filasAfectadas = command.ExecuteNonQuery();
-
-                            if (filasAfectadas > 0)
-                            {
-                                string detalle = $"Se eliminó el usuario con Id: {idUsuario}";
-                                string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (@idUsuario, @detalles, GETDATE())";
-
-                                using (SqlCommand cmdBitacora = new SqlCommand(bitacora, connection, transaction))
-                                {
-                                    cmdBitacora.Parameters.AddWithValue("@idUsuario", idAdmin);
-                                    cmdBitacora.Parameters.AddWithValue("@detalles", detalle);
-                                    cmdBitacora.ExecuteNonQuery();
-                                }
-                                transaction.Commit();
-                                return true;
-                            }
-                            else
-                            {
-                                transaction.Rollback();
-                                return false;
-                            }
-                        }
-                    }
-                    catch (Exception ex)
+                        Direction = ParameterDirection.Output
+                    };
+                    OracleParameter p_mensaje = new OracleParameter("p_mensaje", OracleDbType.Varchar2, 500)
                     {
-                        transaction.Rollback();
-                        throw new Exception("Error al eliminar usuario: " + ex.Message);
-                    }
+                        Direction = ParameterDirection.Output
+                    };
+
+                    cmd.Parameters.Add(p_resultado);
+                    cmd.Parameters.Add(p_mensaje);
+
+                    cmd.ExecuteNonQuery();
+
+                    int resultado = Convert.ToInt32(p_resultado.Value.ToString());
+                    mensaje = p_mensaje.Value.ToString();
+
+                    return resultado == 1;
                 }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error al eliminar usuario: " + ex.Message);
             }
         }
 
 
         // FIN USUARIOS
-
 
         // INICIO ROLES
 
@@ -576,17 +612,17 @@ namespace DAL
         {
             try
             {
-                using (SqlConnection connection = new SqlConnection(StringConexion))
+                using (OracleConnection connection = new OracleConnection(StringConexion))
                 {
                     connection.Open();
 
-                    string query = "SELECT COUNT(*) FROM Roles WHERE NombreRol = @nombreRol";
+                    string query = "SELECT COUNT(*) FROM Roles WHERE NombreRol = :nombreRol";
 
-                    using (SqlCommand command = new SqlCommand(query, connection))
+                    using (OracleCommand command = new OracleCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@nombreRol", nombreRol);
+                        command.Parameters.Add("nombreRol", OracleDbType.Varchar2).Value = nombreRol;
 
-                        int count = (int)command.ExecuteScalar();
+                        int count = Convert.ToInt32(command.ExecuteScalar());
                         return count > 0;
                     }
                 }
@@ -604,15 +640,15 @@ namespace DAL
 
             try
             {
-                using (SqlConnection connection = new SqlConnection(StringConexion))
+                using (OracleConnection connection = new OracleConnection(StringConexion))
                 {
                     connection.Open();
 
                     string query = "SELECT IDRol, NombreRol, Descripcion FROM Roles";
 
-                    using (SqlCommand command = new SqlCommand(query, connection))
+                    using (OracleCommand command = new OracleCommand(query, connection))
                     {
-                        using (SqlDataReader reader = command.ExecuteReader())
+                        using (OracleDataReader reader = command.ExecuteReader())
                         {
                             while (reader.Read())
                             {
@@ -636,36 +672,39 @@ namespace DAL
             return roles;
         }
 
-        // Agrega un nuevo rol
+
         public bool AgregarRol(Rol rol, int idAdmin)
         {
-            using (SqlConnection connection = new SqlConnection(StringConexion))
+            using (OracleConnection connection = new OracleConnection(StringConexion))
             {
                 connection.Open();
-                SqlTransaction transaction = connection.BeginTransaction();
+                OracleTransaction transaction = connection.BeginTransaction();
 
                 try
                 {
-                    string query = "INSERT INTO Roles (NombreRol, Descripcion) VALUES (@nombreRol, @descripcion)";
+                    string query = "INSERT INTO Roles (NombreRol, Descripcion) VALUES (:nombreRol, :descripcion)";
 
-                    using (SqlCommand command = new SqlCommand(query, connection, transaction))
+                    using (OracleCommand command = new OracleCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@nombreRol", rol.NombreRol);
-                        command.Parameters.AddWithValue("@descripcion", (object)rol.Descripcion ?? DBNull.Value);
+                        command.Transaction = transaction;
+                        command.Parameters.Add(":nombreRol", rol.NombreRol);
+                        command.Parameters.Add(":descripcion", rol.Descripcion ?? (object)DBNull.Value);
 
                         int filasAfectadas = command.ExecuteNonQuery();
 
                         if (filasAfectadas > 0)
                         {
                             string detalle = $"Rol agregado: {rol.NombreRol}";
-                            string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (@idUsuario, @detalles, GETDATE())";
+                            string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (:idUsuario, :detalles, SYSDATE)";
 
-                            using (SqlCommand cmdBitacora = new SqlCommand(bitacora, connection, transaction))
+                            using (OracleCommand cmdBitacora = new OracleCommand(bitacora, connection))
                             {
-                                cmdBitacora.Parameters.AddWithValue("@idUsuario", idAdmin);
-                                cmdBitacora.Parameters.AddWithValue("@detalles", detalle);
+                                cmdBitacora.Transaction = transaction;
+                                cmdBitacora.Parameters.Add(":idUsuario", idAdmin);
+                                cmdBitacora.Parameters.Add(":detalles", detalle);
                                 cmdBitacora.ExecuteNonQuery();
                             }
+
                             transaction.Commit();
                             return true;
                         }
@@ -686,34 +725,37 @@ namespace DAL
 
         public bool ActualizarRol(Rol rol, int idAdmin)
         {
-            using (SqlConnection connection = new SqlConnection(StringConexion))
+            using (OracleConnection connection = new OracleConnection(StringConexion))
             {
                 connection.Open();
-                SqlTransaction transaction = connection.BeginTransaction();
+                OracleTransaction transaction = connection.BeginTransaction();
 
                 try
                 {
-                    string query = "UPDATE Roles SET NombreRol = @nombreRol, Descripcion = @descripcion WHERE IDRol = @idRol";
+                    string query = "UPDATE Roles SET NombreRol = :nombreRol, Descripcion = :descripcion WHERE IDRol = :idRol";
 
-                    using (SqlCommand command = new SqlCommand(query, connection, transaction))
+                    using (OracleCommand command = new OracleCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@nombreRol", rol.NombreRol);
-                        command.Parameters.AddWithValue("@descripcion", (object)rol.Descripcion ?? DBNull.Value);
-                        command.Parameters.AddWithValue("@idRol", rol.Id);
+                        command.Transaction = transaction;
+                        command.Parameters.Add(":nombreRol", rol.NombreRol);
+                        command.Parameters.Add(":descripcion", rol.Descripcion ?? (object)DBNull.Value);
+                        command.Parameters.Add(":idRol", rol.Id);
 
                         int filasAfectadas = command.ExecuteNonQuery();
 
                         if (filasAfectadas > 0)
                         {
                             string detalle = $"Rol actualizado: {rol.NombreRol}";
-                            string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (@idUsuario, @detalles, GETDATE())";
+                            string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (:idUsuario, :detalles, SYSDATE)";
 
-                            using (SqlCommand cmdBitacora = new SqlCommand(bitacora, connection, transaction))
+                            using (OracleCommand cmdBitacora = new OracleCommand(bitacora, connection))
                             {
-                                cmdBitacora.Parameters.AddWithValue("@idUsuario", idAdmin);
-                                cmdBitacora.Parameters.AddWithValue("@detalles", detalle);
+                                cmdBitacora.Transaction = transaction;
+                                cmdBitacora.Parameters.Add(":idUsuario", idAdmin);
+                                cmdBitacora.Parameters.Add(":detalles", detalle);
                                 cmdBitacora.ExecuteNonQuery();
                             }
+
                             transaction.Commit();
                             return true;
                         }
@@ -732,79 +774,103 @@ namespace DAL
             }
         }
 
-        public bool EliminarRol(int idRol, int idAdmin)
-        {
-            using (SqlConnection connection = new SqlConnection(StringConexion))
-            {
-                connection.Open();
-                SqlTransaction transaction = connection.BeginTransaction();
 
-                try
+
+
+
+        public bool EliminarRol(int idRol, int idAdmin, out string mensaje)
+        {
+            mensaje = "";
+
+            try
+            {
+                using (OracleConnection connection = new OracleConnection(StringConexion))
                 {
-                    using (SqlCommand command = new SqlCommand("SP_EliminarRolSiNoAsignado", connection, transaction))
+                    connection.Open();
+
+                    using (OracleCommand command = new OracleCommand("SP_EliminarRol", connection))
                     {
                         command.CommandType = CommandType.StoredProcedure;
-                        command.Parameters.AddWithValue("@IDRol", idRol);
+
+                        command.Parameters.Add("p_idRol", OracleDbType.Int32).Value = idRol;
+                        command.Parameters.Add("p_idUsuario", OracleDbType.Int32).Value = idAdmin;
+
+                        OracleParameter p_resultado = new OracleParameter("p_resultado", OracleDbType.Int32)
+                        {
+                            Direction = ParameterDirection.Output
+                        };
+
+                        OracleParameter p_mensaje = new OracleParameter("p_mensaje", OracleDbType.Varchar2, 500)
+                        {
+                            Direction = ParameterDirection.Output
+                        };
+
+                        command.Parameters.Add(p_resultado);
+                        command.Parameters.Add(p_mensaje);
 
                         command.ExecuteNonQuery();
 
-                        string detalle = $"Rol eliminado: {idRol}";
-                        string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (@idUsuario, @detalles, GETDATE())";
+                        int resultado = ((OracleDecimal)p_resultado.Value).ToInt32();
+                        mensaje = p_mensaje.Value.ToString();
 
-                        using (SqlCommand cmdBitacora = new SqlCommand(bitacora, connection, transaction))
-                        {
-                            cmdBitacora.Parameters.AddWithValue("@idUsuario", idAdmin);
-                            cmdBitacora.Parameters.AddWithValue("@detalles", detalle);
-                            cmdBitacora.ExecuteNonQuery();
-                        }
-                        transaction.Commit();
-                        return true;
+                        return resultado == 1;
                     }
                 }
-                catch (Exception ex)
-                {
-                    transaction.Rollback();
-                    throw new Exception("Error al eliminar rol: " + ex.Message);
-                }
+            }
+            catch (Exception ex)
+            {
+                mensaje = "Error al eliminar rol: " + ex.Message;
+                return false; // <- IMPORTANTE: esto soluciona el error de compilación
             }
         }
 
+
+
+
         public void AsignarPermisoARol(int idRol, int idPantalla, int idPermiso, int idAdmin)
         {
-            using (SqlConnection connection = new SqlConnection(StringConexion))
+            using (OracleConnection connection = new OracleConnection(StringConexion))
             {
                 connection.Open();
-                SqlTransaction transaction = connection.BeginTransaction();
+                OracleTransaction transaction = connection.BeginTransaction();
 
                 try
                 {
                     string query = @"
-IF NOT EXISTS (
-    SELECT 1 FROM Rol_Permiso_Pantalla
-    WHERE IDRol = @IDRol AND IDPantalla = @IDPantalla AND IDPermiso = @IDPermiso
-)
- INSERT INTO Rol_Permiso_Pantalla (IDRol, IDPantalla, IDPermiso)
- VALUES (@IDRol, @IDPantalla, @IDPermiso)";
+DECLARE
+    v_count NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_count 
+    FROM Rol_Permiso_Pantalla 
+    WHERE IDRol = :IDRol AND IDPantalla = :IDPantalla AND IDPermiso = :IDPermiso;
 
-                    using (SqlCommand command = new SqlCommand(query, connection, transaction))
+    IF v_count = 0 THEN
+        INSERT INTO Rol_Permiso_Pantalla (IDRol, IDPantalla, IDPermiso)
+        VALUES (:IDRol, :IDPantalla, :IDPermiso);
+    END IF;
+END;";
+
+                    using (OracleCommand command = new OracleCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@IDRol", idRol);
-                        command.Parameters.AddWithValue("@IDPantalla", idPantalla);
-                        command.Parameters.AddWithValue("@IDPermiso", idPermiso);
-
+                        command.Transaction = transaction;
+                        command.Parameters.Add(new OracleParameter("IDRol", idRol));
+                        command.Parameters.Add(new OracleParameter("IDPantalla", idPantalla));
+                        command.Parameters.Add(new OracleParameter("IDPermiso", idPermiso));
                         command.ExecuteNonQuery();
-
-                        string detalle = $"Asignado Permiso {idPermiso} en pantalla {idPantalla} al rol {idRol}";
-                        string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (@idUsuario, @detalles, GETDATE())";
-
-                        using (SqlCommand cmdBitacora = new SqlCommand(bitacora, connection, transaction))
-                        {
-                            cmdBitacora.Parameters.AddWithValue("@idUsuario", idAdmin);
-                            cmdBitacora.Parameters.AddWithValue("@detalles", detalle);
-                            cmdBitacora.ExecuteNonQuery();
-                        }
-                        transaction.Commit();
                     }
+
+                    string detalle = $"Asignado Permiso {idPermiso} en pantalla {idPantalla} al rol {idRol}";
+                    string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (:idUsuario, :detalles, SYSDATE)";
+
+                    using (OracleCommand cmdBitacora = new OracleCommand(bitacora, connection))
+                    {
+                        cmdBitacora.Transaction = transaction;
+                        cmdBitacora.Parameters.Add(new OracleParameter("idUsuario", idAdmin));
+                        cmdBitacora.Parameters.Add(new OracleParameter("detalles", detalle));
+                        cmdBitacora.ExecuteNonQuery();
+                    }
+
+                    transaction.Commit();
                 }
                 catch (Exception ex)
                 {
@@ -814,37 +880,41 @@ IF NOT EXISTS (
             }
         }
 
+
         public void EliminarPermisoARol(int idRol, int idPantalla, int idPermiso, int idAdmin)
         {
-            using (SqlConnection connection = new SqlConnection(StringConexion))
+            using (OracleConnection connection = new OracleConnection(StringConexion))
             {
                 connection.Open();
-                SqlTransaction transaction = connection.BeginTransaction();
+                OracleTransaction transaction = connection.BeginTransaction();
 
                 try
                 {
                     string query = @"DELETE FROM Rol_Permiso_Pantalla
-                             WHERE IDRol = @IDRol AND IDPantalla = @IDPantalla AND IDPermiso = @IDPermiso";
+                             WHERE IDRol = :IDRol AND IDPantalla = :IDPantalla AND IDPermiso = :IDPermiso";
 
-                    using (SqlCommand command = new SqlCommand(query, connection, transaction))
+                    using (OracleCommand command = new OracleCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@IDRol", idRol);
-                        command.Parameters.AddWithValue("@IDPantalla", idPantalla);
-                        command.Parameters.AddWithValue("@IDPermiso", idPermiso);
+                        command.Transaction = transaction;
+                        command.Parameters.Add(new OracleParameter("IDRol", idRol));
+                        command.Parameters.Add(new OracleParameter("IDPantalla", idPantalla));
+                        command.Parameters.Add(new OracleParameter("IDPermiso", idPermiso));
 
                         command.ExecuteNonQuery();
-
-                        string detalle = $"Eliminado Permiso {idPermiso} en pantalla {idPantalla} del rol {idRol}";
-                        string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (@idUsuario, @detalles, GETDATE())";
-
-                        using (SqlCommand cmdBitacora = new SqlCommand(bitacora, connection, transaction))
-                        {
-                            cmdBitacora.Parameters.AddWithValue("@idUsuario", idAdmin);
-                            cmdBitacora.Parameters.AddWithValue("@detalles", detalle);
-                            cmdBitacora.ExecuteNonQuery();
-                        }
-                        transaction.Commit();
                     }
+
+                    string detalle = $"Eliminado Permiso {idPermiso} en pantalla {idPantalla} del rol {idRol}";
+                    string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (:idUsuario, :detalles, SYSDATE)";
+
+                    using (OracleCommand cmdBitacora = new OracleCommand(bitacora, connection))
+                    {
+                        cmdBitacora.Transaction = transaction;
+                        cmdBitacora.Parameters.Add(new OracleParameter("idUsuario", idAdmin));
+                        cmdBitacora.Parameters.Add(new OracleParameter("detalles", detalle));
+                        cmdBitacora.ExecuteNonQuery();
+                    }
+
+                    transaction.Commit();
                 }
                 catch (Exception ex)
                 {
@@ -854,25 +924,24 @@ IF NOT EXISTS (
             }
         }
 
-
         public List<Rol> ObtenerRolesPorUsuario(int idUsuario)
         {
             List<Rol> roles = new List<Rol>();
 
-            using (SqlConnection connection = new SqlConnection(StringConexion))
+            using (OracleConnection connection = new OracleConnection(StringConexion))
             {
                 connection.Open();
 
                 string query = @"SELECT R.IDRol, R.NombreRol
                          FROM Usuario_Rol UR
                          INNER JOIN Roles R ON UR.IDRol = R.IDRol
-                         WHERE UR.IDUsuario = @IDUsuario";
+                         WHERE UR.IDUsuario = :IDUsuario";
 
-                using (SqlCommand command = new SqlCommand(query, connection))
+                using (OracleCommand command = new OracleCommand(query, connection))
                 {
-                    command.Parameters.AddWithValue("@IDUsuario", idUsuario);
+                    command.Parameters.Add(new OracleParameter("IDUsuario", idUsuario));
 
-                    using (SqlDataReader reader = command.ExecuteReader())
+                    using (OracleDataReader reader = command.ExecuteReader())
                     {
                         while (reader.Read())
                         {
@@ -891,38 +960,43 @@ IF NOT EXISTS (
 
         public void AsignarRolAUsuario(int idUsuario, int idRol, int idAdmin)
         {
-            using (SqlConnection connection = new SqlConnection(StringConexion))
+            using (OracleConnection connection = new OracleConnection(StringConexion))
             {
                 connection.Open();
-                SqlTransaction transaction = connection.BeginTransaction();
+                OracleTransaction transaction = connection.BeginTransaction();
 
                 try
                 {
                     string query = @"
-                IF NOT EXISTS (
-                    SELECT 1 FROM Usuario_Rol 
-                    WHERE IDUsuario = @IDUsuario AND IDRol = @IDRol
-                )
-                BEGIN
-                    INSERT INTO Usuario_Rol (IDUsuario, IDRol)
-                    VALUES (@IDUsuario, @IDRol);
-                END";
+DECLARE
+    v_count NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_count 
+    FROM Usuario_Rol 
+    WHERE IDUsuario = :IDUsuario AND IDRol = :IDRol;
 
-                    using (SqlCommand command = new SqlCommand(query, connection, transaction))
+    IF v_count = 0 THEN
+        INSERT INTO Usuario_Rol (IDUsuario, IDRol)
+        VALUES (:IDUsuario, :IDRol);
+    END IF;
+END;";
+
+                    using (OracleCommand command = new OracleCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@IDUsuario", idUsuario);
-                        command.Parameters.AddWithValue("@IDRol", idRol);
-
+                        command.Transaction = transaction;
+                        command.Parameters.Add(new OracleParameter("IDUsuario", idUsuario));
+                        command.Parameters.Add(new OracleParameter("IDRol", idRol));
                         command.ExecuteNonQuery();
                     }
 
                     string detalle = $"Se asignó el rol {idRol} al usuario {idUsuario}";
-                    string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (@idUsuario, @detalles, GETDATE())";
+                    string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (:idUsuario, :detalles, SYSDATE)";
 
-                    using (SqlCommand cmdBitacora = new SqlCommand(bitacora, connection, transaction))
+                    using (OracleCommand cmdBitacora = new OracleCommand(bitacora, connection))
                     {
-                        cmdBitacora.Parameters.AddWithValue("@idUsuario", idAdmin);
-                        cmdBitacora.Parameters.AddWithValue("@detalles", detalle);
+                        cmdBitacora.Transaction = transaction;
+                        cmdBitacora.Parameters.Add(new OracleParameter("idUsuario", idAdmin));
+                        cmdBitacora.Parameters.Add(new OracleParameter("detalles", detalle));
                         cmdBitacora.ExecuteNonQuery();
                     }
 
@@ -936,33 +1010,37 @@ IF NOT EXISTS (
             }
         }
 
+
+
         public void EliminarRolDeUsuario(int idUsuario, int idRol, int idAdmin)
         {
-            using (SqlConnection connection = new SqlConnection(StringConexion))
+            using (OracleConnection connection = new OracleConnection(StringConexion))
             {
                 connection.Open();
-                SqlTransaction transaction = connection.BeginTransaction();
+                OracleTransaction transaction = connection.BeginTransaction();
 
                 try
                 {
                     string query = @"DELETE FROM Usuario_Rol 
-                             WHERE IDUsuario = @IDUsuario AND IDRol = @IDRol";
+                             WHERE IDUsuario = :IDUsuario AND IDRol = :IDRol";
 
-                    using (SqlCommand command = new SqlCommand(query, connection, transaction))
+                    using (OracleCommand command = new OracleCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@IDUsuario", idUsuario);
-                        command.Parameters.AddWithValue("@IDRol", idRol);
+                        command.Transaction = transaction;
+                        command.Parameters.Add(new OracleParameter("IDUsuario", idUsuario));
+                        command.Parameters.Add(new OracleParameter("IDRol", idRol));
 
                         command.ExecuteNonQuery();
                     }
 
                     string detalle = $"Se eliminó el rol {idRol} del usuario {idUsuario}";
-                    string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (@idUsuario, @detalles, GETDATE())";
+                    string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (:idUsuario, :detalles, SYSDATE)";
 
-                    using (SqlCommand cmdBitacora = new SqlCommand(bitacora, connection, transaction))
+                    using (OracleCommand cmdBitacora = new OracleCommand(bitacora, connection))
                     {
-                        cmdBitacora.Parameters.AddWithValue("@idUsuario", idAdmin);
-                        cmdBitacora.Parameters.AddWithValue("@detalles", detalle);
+                        cmdBitacora.Transaction = transaction;
+                        cmdBitacora.Parameters.Add(new OracleParameter("idUsuario", idAdmin));
+                        cmdBitacora.Parameters.Add(new OracleParameter("detalles", detalle));
                         cmdBitacora.ExecuteNonQuery();
                     }
 
@@ -979,33 +1057,32 @@ IF NOT EXISTS (
 
 
 
-        // FIN ROLES
 
-        // INICIO PANTALLAS
+
+        // ----------- PANTALLAS -----------
 
         public bool PantallaExiste(int idSistema, string nombrePantalla)
         {
-            try
+            using (OracleConnection connection = new OracleConnection(StringConexion))
             {
-                using (SqlConnection connection = new SqlConnection(StringConexion))
+                connection.Open();
+                try
                 {
-                    connection.Open();
-
-                    string query = "SELECT COUNT(*) FROM Pantallas WHERE IDSistema = @idSistema AND NombrePantalla = @nombrePantalla";
-
-                    using (SqlCommand command = new SqlCommand(query, connection))
+                    using (OracleCommand command = new OracleCommand(
+                        "SELECT COUNT(*) FROM Pantallas WHERE IDSistema = :idSistema AND NombrePantalla = :nombrePantalla", connection))
                     {
-                        command.Parameters.AddWithValue("@idSistema", idSistema);
-                        command.Parameters.AddWithValue("@nombrePantalla", nombrePantalla);
+                        command.CommandType = CommandType.Text;
+                        command.Parameters.Add("idSistema", OracleDbType.Int32).Value = idSistema;
+                        command.Parameters.Add("nombrePantalla", OracleDbType.Varchar2).Value = nombrePantalla;
 
-                        int count = (int)command.ExecuteScalar();
+                        int count = Convert.ToInt32(command.ExecuteScalar());
                         return count > 0;
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error al verificar existencia de la pantalla: " + ex.Message);
+                catch (Exception ex)
+                {
+                    throw new Exception("Error al verificar existencia de la pantalla: " + ex.Message);
+                }
             }
         }
 
@@ -1013,21 +1090,21 @@ IF NOT EXISTS (
         {
             List<Pantalla> pantallas = new List<Pantalla>();
 
-            try
+            using (OracleConnection connection = new OracleConnection(StringConexion))
             {
-                using (SqlConnection connection = new SqlConnection(StringConexion))
+                connection.Open();
+                try
                 {
-                    connection.Open();
-
                     string query = @"
-    SELECT p.IDPantalla, p.IDSistema, s.NombreSistema, p.NombrePantalla
-    FROM Pantallas p
-    INNER JOIN Sistemas s ON p.IDSistema = s.IdSistema
-";
+                SELECT p.IDPantalla, p.IDSistema, s.NombreSistema, p.NombrePantalla
+                FROM Pantallas p
+                INNER JOIN Sistemas s ON p.IDSistema = s.IDSistema";
 
-                    using (SqlCommand command = new SqlCommand(query, connection))
+                    using (OracleCommand command = new OracleCommand(query, connection))
                     {
-                        using (SqlDataReader reader = command.ExecuteReader())
+                        command.CommandType = CommandType.Text;
+
+                        using (OracleDataReader reader = command.ExecuteReader())
                         {
                             while (reader.Read())
                             {
@@ -1043,45 +1120,101 @@ IF NOT EXISTS (
                         }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error al obtener pantallas: " + ex.Message);
+                catch (Exception ex)
+                {
+                    throw new Exception("Error al obtener pantallas: " + ex.Message);
+                }
             }
 
             return pantallas;
         }
 
 
-        public bool AgregarPantalla(Pantalla pantalla, int idAdmin)
+
+
+
+        public List<Pantalla> ObtenerPantallasPantalla()
         {
-            using (SqlConnection connection = new SqlConnection(StringConexion))
+            List<Pantalla> pantallas = new List<Pantalla>();
+
+            using (OracleConnection connection = new OracleConnection(StringConexion))
             {
                 connection.Open();
-                SqlTransaction transaction = connection.BeginTransaction();
+                try
+                {
+                    string query = @"
+                SELECT p.IDPantalla, p.IDSistema, s.NombreSistema, p.NombrePantalla
+                FROM Pantallas p
+                INNER JOIN Sistemas s ON p.IDSistema = s.IDSistema
+                WHERE NOT (s.NombreSistema = :nombreSistema AND p.NombrePantalla = :nombrePantalla)";
+
+                    using (OracleCommand command = new OracleCommand(query, connection))
+                    {
+                        command.CommandType = CommandType.Text;
+                        command.Parameters.Add(new OracleParameter("nombreSistema", "Seguridad"));
+                        command.Parameters.Add(new OracleParameter("nombrePantalla", "MenuSeguridad"));
+
+                        using (OracleDataReader reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                Pantalla pantalla = new Pantalla
+                                {
+                                    Id = reader.GetInt32(0),
+                                    IdSistema = reader.GetInt32(1),
+                                    NombreSistema = reader.GetString(2),
+                                    NombrePantalla = reader.GetString(3)
+                                };
+                                pantallas.Add(pantalla);
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception("Error al obtener pantallas: " + ex.Message);
+                }
+            }
+
+            return pantallas;
+        }
+
+
+
+
+        public bool AgregarPantalla(Pantalla pantalla, int idAdmin)
+        {
+            using (OracleConnection connection = new OracleConnection(StringConexion))
+            {
+                connection.Open();
+                OracleTransaction transaction = connection.BeginTransaction();
 
                 try
                 {
-                    string query = "INSERT INTO Pantallas (IDSistema, NombrePantalla) VALUES (@idSistema, @nombrePantalla)";
-
-                    using (SqlCommand command = new SqlCommand(query, connection, transaction))
+                    using (OracleCommand command = new OracleCommand(
+                        "INSERT INTO Pantallas (IDSistema, NombrePantalla) VALUES (:idSistema, :nombrePantalla)", connection))
                     {
-                        command.Parameters.AddWithValue("@idSistema", pantalla.IdSistema);
-                        command.Parameters.AddWithValue("@nombrePantalla", pantalla.NombrePantalla);
+                        command.Transaction = transaction;
+                        command.CommandType = CommandType.Text;
+                        command.Parameters.Add("idSistema", OracleDbType.Int32).Value = pantalla.IdSistema;
+                        command.Parameters.Add("nombrePantalla", OracleDbType.Varchar2).Value = pantalla.NombrePantalla;
 
                         int filasAfectadas = command.ExecuteNonQuery();
 
                         if (filasAfectadas > 0)
                         {
                             string detalle = $"Pantalla agregada: {pantalla.NombrePantalla}";
-                            string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (@idUsuario, @detalles, GETDATE())";
 
-                            using (SqlCommand cmdBitacora = new SqlCommand(bitacora, connection, transaction))
+                            using (OracleCommand cmdBitacora = new OracleCommand(
+                                "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (:idUsuario, :detalles, SYSDATE)", connection))
                             {
-                                cmdBitacora.Parameters.AddWithValue("@idUsuario", idAdmin);
-                                cmdBitacora.Parameters.AddWithValue("@detalles", detalle);
+                                cmdBitacora.Transaction = transaction;
+                                cmdBitacora.CommandType = CommandType.Text;
+                                cmdBitacora.Parameters.Add("idUsuario", OracleDbType.Int32).Value = idAdmin;
+                                cmdBitacora.Parameters.Add("detalles", OracleDbType.Varchar2).Value = detalle;
                                 cmdBitacora.ExecuteNonQuery();
                             }
+
                             transaction.Commit();
                             return true;
                         }
@@ -1102,33 +1235,37 @@ IF NOT EXISTS (
 
         public bool ActualizarPantalla(Pantalla pantalla, int idAdmin)
         {
-            using (SqlConnection connection = new SqlConnection(StringConexion))
+            using (OracleConnection connection = new OracleConnection(StringConexion))
             {
                 connection.Open();
-                SqlTransaction transaction = connection.BeginTransaction();
+                OracleTransaction transaction = connection.BeginTransaction();
 
                 try
                 {
-                    string query = "UPDATE Pantallas SET NombrePantalla = @nombrePantalla WHERE IDPantalla = @idPantalla";
-
-                    using (SqlCommand cmd = new SqlCommand(query, connection, transaction))
+                    using (OracleCommand cmd = new OracleCommand(
+                        "UPDATE Pantallas SET NombrePantalla = :nombrePantalla WHERE IDPantalla = :idPantalla", connection))
                     {
-                        cmd.Parameters.AddWithValue("@nombrePantalla", pantalla.NombrePantalla);
-                        cmd.Parameters.AddWithValue("@idPantalla", pantalla.Id);
+                        cmd.Transaction = transaction;
+                        cmd.CommandType = CommandType.Text;
+                        cmd.Parameters.Add("nombrePantalla", OracleDbType.Varchar2).Value = pantalla.NombrePantalla;
+                        cmd.Parameters.Add("idPantalla", OracleDbType.Int32).Value = pantalla.Id;
 
                         int filasAfectadas = cmd.ExecuteNonQuery();
 
                         if (filasAfectadas > 0)
                         {
                             string detalle = $"Pantalla actualizada: {pantalla.NombrePantalla}";
-                            string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (@idUsuario, @detalles, GETDATE())";
 
-                            using (SqlCommand cmdBitacora = new SqlCommand(bitacora, connection, transaction))
+                            using (OracleCommand cmdBitacora = new OracleCommand(
+                                "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (:idUsuario, :detalles, SYSDATE)", connection))
                             {
-                                cmdBitacora.Parameters.AddWithValue("@idUsuario", idAdmin);
-                                cmdBitacora.Parameters.AddWithValue("@detalles", detalle);
+                                cmdBitacora.Transaction = transaction;
+                                cmdBitacora.CommandType = CommandType.Text;
+                                cmdBitacora.Parameters.Add("idUsuario", OracleDbType.Int32).Value = idAdmin;
+                                cmdBitacora.Parameters.Add("detalles", OracleDbType.Varchar2).Value = detalle;
                                 cmdBitacora.ExecuteNonQuery();
                             }
+
                             transaction.Commit();
                             return true;
                         }
@@ -1147,72 +1284,65 @@ IF NOT EXISTS (
             }
         }
 
-        public bool EliminarPantalla(int idPantalla, int idAdmin)
+        public bool EliminarPantalla(int idPantalla, int idAdmin, out string mensaje)
         {
-            using (SqlConnection connection = new SqlConnection(StringConexion))
+            mensaje = string.Empty;
+            bool resultado = false;
+
+            using (OracleConnection connection = new OracleConnection(StringConexion))
             {
                 connection.Open();
-                SqlTransaction transaction = connection.BeginTransaction();
 
-                try
+                using (OracleCommand cmd = new OracleCommand("SP_EliminarPantalla", connection))
                 {
-                    string query = "DELETE FROM Pantallas WHERE IDPantalla = @idPantalla";
+                    cmd.CommandType = CommandType.StoredProcedure;
 
-                    using (SqlCommand cmd = new SqlCommand(query, connection, transaction))
-                    {
-                        cmd.Parameters.AddWithValue("@idPantalla", idPantalla);
+                    // Parámetros de entrada
+                    cmd.Parameters.Add("p_idPantalla", OracleDbType.Int32).Value = idPantalla;
+                    cmd.Parameters.Add("p_idUsuario", OracleDbType.Int32).Value = idAdmin;
 
-                        int filasAfectadas = cmd.ExecuteNonQuery();
+                    // Parámetros de salida
+                    var p_resultado = new OracleParameter("p_resultado", OracleDbType.Int32);
+                    p_resultado.Direction = ParameterDirection.Output;
+                    cmd.Parameters.Add(p_resultado);
 
-                        if (filasAfectadas > 0)
-                        {
-                            string detalle = $"Pantalla eliminada: {idPantalla}";
-                            string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (@idUsuario, @detalles, GETDATE())";
+                    var p_mensaje = new OracleParameter("p_mensaje", OracleDbType.Varchar2, 500);
+                    p_mensaje.Direction = ParameterDirection.Output;
+                    cmd.Parameters.Add(p_mensaje);
 
-                            using (SqlCommand cmdBitacora = new SqlCommand(bitacora, connection, transaction))
-                            {
-                                cmdBitacora.Parameters.AddWithValue("@idUsuario", idAdmin);
-                                cmdBitacora.Parameters.AddWithValue("@detalles", detalle);
-                                cmdBitacora.ExecuteNonQuery();
-                            }
-                            transaction.Commit();
-                            return true;
-                        }
-                        else
-                        {
-                            transaction.Rollback();
-                            return false;
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    transaction.Rollback();
-                    throw new Exception("Error al eliminar pantalla: " + ex.Message);
+                    cmd.ExecuteNonQuery();
+
+                    // Leer resultados
+                    int valorResultado = Convert.ToInt32(p_resultado.Value.ToString());
+                    mensaje = p_mensaje.Value.ToString();
+
+                    resultado = (valorResultado == 1);
                 }
             }
+
+            return resultado;
         }
 
 
-        // FIN PANTALLAS
 
-        // INICIO PERMISOS
+        // ----------- PERMISOS -----------
 
         public List<Permiso> ObtenerPermisos()
         {
             List<Permiso> permisos = new List<Permiso>();
 
-            try
+            using (OracleConnection connection = new OracleConnection(StringConexion))
             {
-                using (SqlConnection connection = new SqlConnection(StringConexion))
+                connection.Open();
+                try
                 {
-                    connection.Open();
-
                     string query = "SELECT IDPermiso, NombrePermiso FROM Permisos";
 
-                    using (SqlCommand command = new SqlCommand(query, connection))
+                    using (OracleCommand command = new OracleCommand(query, connection))
                     {
-                        using (SqlDataReader reader = command.ExecuteReader())
+                        command.CommandType = CommandType.Text;
+
+                        using (OracleDataReader reader = command.ExecuteReader())
                         {
                             while (reader.Read())
                             {
@@ -1226,14 +1356,15 @@ IF NOT EXISTS (
                         }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error al obtener los permisos: " + ex.Message);
+                catch (Exception ex)
+                {
+                    throw new Exception("Error al obtener los permisos: " + ex.Message);
+                }
             }
 
             return permisos;
         }
+
 
         public int ObtenerIdPermisoPorNombre(string nombrePermiso)
         {
@@ -1241,19 +1372,19 @@ IF NOT EXISTS (
 
             try
             {
-                using (SqlConnection connection = new SqlConnection(StringConexion))
+                using (OracleConnection connection = new OracleConnection(StringConexion))
                 {
                     connection.Open();
 
-                    string query = "SELECT IDPermiso FROM Permisos WHERE NombrePermiso = @nombrePermiso";
+                    string query = "SELECT IDPermiso FROM Permisos WHERE NombrePermiso = :nombrePermiso";
 
-                    using (SqlCommand command = new SqlCommand(query, connection))
+                    using (OracleCommand command = new OracleCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@nombrePermiso", nombrePermiso);
+                        command.Parameters.Add(new OracleParameter("nombrePermiso", nombrePermiso));
 
                         object result = command.ExecuteScalar();
 
-                        if (result != null)
+                        if (result != null && result != DBNull.Value)
                         {
                             idPermiso = Convert.ToInt32(result);
                         }
@@ -1272,26 +1403,28 @@ IF NOT EXISTS (
             return idPermiso;
         }
 
+
         public List<int> ObtenerPermisosAsignados(int idRol, int idPantalla)
         {
             List<int> permisosAsignados = new List<int>();
 
-            try
+            using (OracleConnection connection = new OracleConnection(StringConexion))
             {
-                using (SqlConnection connection = new SqlConnection(StringConexion))
-                {
-                    connection.Open();
+                connection.Open();
 
+                try
+                {
                     string query = @"SELECT IDPermiso 
                              FROM Rol_Permiso_Pantalla 
-                             WHERE IDRol = @idRol AND IDPantalla = @idPantalla";
+                             WHERE IDRol = :idRol AND IDPantalla = :idPantalla";
 
-                    using (SqlCommand command = new SqlCommand(query, connection))
+                    using (OracleCommand command = new OracleCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@idRol", idRol);
-                        command.Parameters.AddWithValue("@idPantalla", idPantalla);
+                        command.CommandType = CommandType.Text;
+                        command.Parameters.Add("idRol", OracleDbType.Int32).Value = idRol;
+                        command.Parameters.Add("idPantalla", OracleDbType.Int32).Value = idPantalla;
 
-                        using (SqlDataReader reader = command.ExecuteReader())
+                        using (OracleDataReader reader = command.ExecuteReader())
                         {
                             while (reader.Read())
                             {
@@ -1300,10 +1433,10 @@ IF NOT EXISTS (
                         }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error al obtener permisos asignados: " + ex.Message);
+                catch (Exception ex)
+                {
+                    throw new Exception("Error al obtener permisos asignados: " + ex.Message);
+                }
             }
 
             return permisosAsignados;
@@ -1313,22 +1446,23 @@ IF NOT EXISTS (
         {
             List<int> permisosAsignados = new List<int>();
 
-            try
+            using (OracleConnection connection = new OracleConnection(StringConexion))
             {
-                using (SqlConnection connection = new SqlConnection(StringConexion))
-                {
-                    connection.Open();
+                connection.Open();
 
+                try
+                {
                     string query = @"SELECT IDPermiso 
                              FROM Usuario_Permiso_Pantalla 
-                             WHERE IDUsuario = @idUsuario AND IDPantalla = @idPantalla";
+                             WHERE IDUsuario = :idUsuario AND IDPantalla = :idPantalla";
 
-                    using (SqlCommand command = new SqlCommand(query, connection))
+                    using (OracleCommand command = new OracleCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@idUsuario", idUsuario);
-                        command.Parameters.AddWithValue("@idPantalla", idPantalla);
+                        command.CommandType = CommandType.Text;
+                        command.Parameters.Add("idUsuario", OracleDbType.Int32).Value = idUsuario;
+                        command.Parameters.Add("idPantalla", OracleDbType.Int32).Value = idPantalla;
 
-                        using (SqlDataReader reader = command.ExecuteReader())
+                        using (OracleDataReader reader = command.ExecuteReader())
                         {
                             while (reader.Read())
                             {
@@ -1337,47 +1471,52 @@ IF NOT EXISTS (
                         }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error al obtener permisos de usuario: " + ex.Message);
+                catch (Exception ex)
+                {
+                    throw new Exception("Error al obtener permisos de usuario: " + ex.Message);
+                }
             }
 
             return permisosAsignados;
         }
 
-        public void AsignarPermisoAUsuario(int idUsuario, int idPantalla, int idPermiso, int idAdmin)
+        public bool AsignarPermisoAUsuario(int idUsuario, int idPantalla, int idPermiso, int idAdmin)
         {
-            using (SqlConnection connection = new SqlConnection(StringConexion))
+            using (OracleConnection connection = new OracleConnection(StringConexion))
             {
                 connection.Open();
-                SqlTransaction transaction = connection.BeginTransaction();
+                OracleTransaction transaction = connection.BeginTransaction();
 
                 try
                 {
                     string query = @"INSERT INTO Usuario_Permiso_Pantalla (IDUsuario, IDPantalla, IDPermiso) 
-                             VALUES (@idUsuario, @idPantalla, @idPermiso)";
+                             VALUES (:idUsuario, :idPantalla, :idPermiso)";
 
-                    using (SqlCommand command = new SqlCommand(query, connection, transaction))
+                    using (OracleCommand command = new OracleCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@idUsuario", idUsuario);
-                        command.Parameters.AddWithValue("@idPantalla", idPantalla);
-                        command.Parameters.AddWithValue("@idPermiso", idPermiso);
+                        command.Transaction = transaction;
+                        command.CommandType = CommandType.Text;
+                        command.Parameters.Add("idUsuario", OracleDbType.Int32).Value = idUsuario;
+                        command.Parameters.Add("idPantalla", OracleDbType.Int32).Value = idPantalla;
+                        command.Parameters.Add("idPermiso", OracleDbType.Int32).Value = idPermiso;
 
                         command.ExecuteNonQuery();
                     }
 
                     string detalle = $"Se asignó permiso {idPermiso} en pantalla {idPantalla} al usuario {idUsuario}";
-                    string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (@idUsuarioBitacora, @detalles, GETDATE())";
 
-                    using (SqlCommand cmdBitacora = new SqlCommand(bitacora, connection, transaction))
+                    using (OracleCommand cmdBitacora = new OracleCommand(
+                        "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (:idUsuarioBitacora, :detalles, SYSDATE)", connection))
                     {
-                        cmdBitacora.Parameters.AddWithValue("@idUsuarioBitacora", idAdmin);
-                        cmdBitacora.Parameters.AddWithValue("@detalles", detalle);
+                        cmdBitacora.Transaction = transaction;
+                        cmdBitacora.CommandType = CommandType.Text;
+                        cmdBitacora.Parameters.Add("idUsuarioBitacora", OracleDbType.Int32).Value = idAdmin;
+                        cmdBitacora.Parameters.Add("detalles", OracleDbType.Varchar2).Value = detalle;
                         cmdBitacora.ExecuteNonQuery();
                     }
 
                     transaction.Commit();
+                    return true;
                 }
                 catch (Exception ex)
                 {
@@ -1387,38 +1526,43 @@ IF NOT EXISTS (
             }
         }
 
-        public void EliminarPermisoAUsuario(int idUsuario, int idPantalla, int idPermiso, int idAdmin)
+        public bool EliminarPermisoAUsuario(int idUsuario, int idPantalla, int idPermiso, int idAdmin)
         {
-            using (SqlConnection connection = new SqlConnection(StringConexion))
+            using (OracleConnection connection = new OracleConnection(StringConexion))
             {
                 connection.Open();
-                SqlTransaction transaction = connection.BeginTransaction();
+                OracleTransaction transaction = connection.BeginTransaction();
 
                 try
                 {
                     string query = @"DELETE FROM Usuario_Permiso_Pantalla 
-                             WHERE IDUsuario = @idUsuario AND IDPantalla = @idPantalla AND IDPermiso = @idPermiso";
+                             WHERE IDUsuario = :idUsuario AND IDPantalla = :idPantalla AND IDPermiso = :idPermiso";
 
-                    using (SqlCommand command = new SqlCommand(query, connection, transaction))
+                    using (OracleCommand command = new OracleCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@idUsuario", idUsuario);
-                        command.Parameters.AddWithValue("@idPantalla", idPantalla);
-                        command.Parameters.AddWithValue("@idPermiso", idPermiso);
+                        command.Transaction = transaction;
+                        command.CommandType = CommandType.Text;
+                        command.Parameters.Add("idUsuario", OracleDbType.Int32).Value = idUsuario;
+                        command.Parameters.Add("idPantalla", OracleDbType.Int32).Value = idPantalla;
+                        command.Parameters.Add("idPermiso", OracleDbType.Int32).Value = idPermiso;
 
                         command.ExecuteNonQuery();
                     }
 
                     string detalle = $"Se eliminó permiso {idPermiso} en pantalla {idPantalla} del usuario {idUsuario}";
-                    string bitacora = "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (@idUsuarioBitacora, @detalles, GETDATE())";
 
-                    using (SqlCommand cmdBitacora = new SqlCommand(bitacora, connection, transaction))
+                    using (OracleCommand cmdBitacora = new OracleCommand(
+                        "INSERT INTO Bitacora (IdUsuario, Detalles, Fecha) VALUES (:idUsuarioBitacora, :detalles, SYSDATE)", connection))
                     {
-                        cmdBitacora.Parameters.AddWithValue("@idUsuarioBitacora", idAdmin);
-                        cmdBitacora.Parameters.AddWithValue("@detalles", detalle);
+                        cmdBitacora.Transaction = transaction;
+                        cmdBitacora.CommandType = CommandType.Text;
+                        cmdBitacora.Parameters.Add("idUsuarioBitacora", OracleDbType.Int32).Value = idAdmin;
+                        cmdBitacora.Parameters.Add("detalles", OracleDbType.Varchar2).Value = detalle;
                         cmdBitacora.ExecuteNonQuery();
                     }
 
                     transaction.Commit();
+                    return true;
                 }
                 catch (Exception ex)
                 {
@@ -1429,11 +1573,8 @@ IF NOT EXISTS (
         }
 
 
-
-
-
-
-        // FIN PERMISOS
-
     }
 }
+
+
+

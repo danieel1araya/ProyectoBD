@@ -156,36 +156,37 @@ namespace ProyectoBD.Roles
                         Descripcion = fila.Cells["Descripcion"].Value.ToString()
                     };
 
-                    FRMEditRole frmEdit = new FRMEditRole(rolSeleccionado, conexionSql,_idUsuario);
+                    FRMEditRole frmEdit = new FRMEditRole(rolSeleccionado, conexionSql, _idUsuario);
                     frmEdit.Show();
                     this.Close();
                 }
                 else if (columna == "Eliminar")
                 {
-                    // Obtener la fila seleccionada
                     var fila = dgvRoles.Rows[e.RowIndex];
 
-                    // Obtener el ID del rol
                     int idRol = Convert.ToInt32(fila.Cells["Id"].Value);
                     string nombreRol = fila.Cells["NombreRol"].Value.ToString();
 
-                    var resultado = MessageBox.Show($"¿Seguro que deseas eliminar el rol '{nombreRol}'?",
-                                                     "Confirmar eliminación",
-                                                     MessageBoxButtons.YesNo,
-                                                     MessageBoxIcon.Warning);
-                    if (resultado == DialogResult.Yes)
+                    var confirmacion = MessageBox.Show($"¿Seguro que deseas eliminar el rol '{nombreRol}'?",
+                                                       "Confirmar eliminación",
+                                                       MessageBoxButtons.YesNo,
+                                                       MessageBoxIcon.Warning);
+
+                    if (confirmacion == DialogResult.Yes)
                     {
-                        bool eliminado = conexionSql.EliminarRol(idRol,_idUsuario);
+                        string mensaje;
+                        bool eliminado = conexionSql.EliminarRol(idRol, _idUsuario, out mensaje);
+
                         if (eliminado)
                         {
-                            MessageBox.Show("Rol eliminado correctamente.");
+                            MessageBox.Show(mensaje);
                             this.Close();
                             FRMRoles frm = new FRMRoles(_idUsuario);
                             frm.Show();
                         }
                         else
                         {
-                            MessageBox.Show("No se pudo eliminar el rol.");
+                            MessageBox.Show(mensaje);
                         }
                     }
                 }
@@ -213,6 +214,11 @@ namespace ProyectoBD.Roles
             FRMHome frm = new FRMHome(_idUsuario);
             frm.Show();
             this.Hide();
+        }
+
+        private void dgvRoles_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
         }
     }
 }

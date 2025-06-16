@@ -73,6 +73,7 @@
             dgvRoles.Size = new Size(809, 335);
             dgvRoles.TabIndex = 8;
             dgvRoles.CellClick += dgvRoles_CellClick;
+            dgvRoles.CellContentClick += dgvRoles_CellContentClick;
             // 
             // FRMRoles
             // 

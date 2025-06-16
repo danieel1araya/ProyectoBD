@@ -73,6 +73,7 @@
             dgvSistemas.Size = new Size(809, 335);
             dgvSistemas.TabIndex = 4;
             dgvSistemas.CellClick += dgvSistemas_CellClick;
+            dgvSistemas.CellContentClick += dgvSistemas_CellContentClick;
             // 
             // FRMSistema
             // 

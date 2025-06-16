@@ -52,8 +52,7 @@ namespace ProyectoBD.Screens
 
         public void CargarPantallas()
         {
-            var pantallas = conexionSql.ObtenerPantallas(); // Tu método DAL que devuelve lista de pantallas
-            dgvPantallas.DataSource = null;
+            var pantallas = conexionSql.ObtenerPantallasPantalla(); 
             dgvPantallas.DataSource = pantallas;
 
             MejorarInterfazDataGridView();
@@ -160,7 +159,7 @@ namespace ProyectoBD.Screens
                         IdSistema = Convert.ToInt32(fila.Cells["IdSistema"].Value)
                     };
 
-                    FRMEditPan frmEdit = new FRMEditPan(pantalla, conexionSql,_idUsuario);
+                    FRMEditPan frmEdit = new FRMEditPan(pantalla, conexionSql, _idUsuario);
                     frmEdit.Show();
                     this.Close();
                 }
@@ -173,21 +172,23 @@ namespace ProyectoBD.Screens
 
                     if (confirm == DialogResult.Yes)
                     {
-                        bool eliminado = conexionSql.EliminarPantalla(idPantalla, _idUsuario);
+                        string mensaje;
+                        bool eliminado = conexionSql.EliminarPantalla(idPantalla, _idUsuario, out mensaje);
 
                         if (eliminado)
                         {
-                            MessageBox.Show("Pantalla eliminada correctamente.");
+                            MessageBox.Show(mensaje, "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             this.Close();
                             FRMPantalla frm = new FRMPantalla(_idUsuario);
                             frm.Show();
                         }
                         else
                         {
-                            MessageBox.Show("No se pudo eliminar la pantalla.");
+                            MessageBox.Show(mensaje, "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         }
                     }
                 }
+
             }
         }
 
@@ -203,6 +204,11 @@ namespace ProyectoBD.Screens
             FRMHome frm_home = new FRMHome(_idUsuario);
             frm_home.Show();
             this.Hide();
+        }
+
+        private void dgvPantallas_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
         }
     }
 }

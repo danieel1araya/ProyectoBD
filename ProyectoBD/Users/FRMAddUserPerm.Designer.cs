@@ -157,6 +157,7 @@
             Name = "FRMAddUserPerm";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "FRMAddUserPerm";
+            Load += FRMAddUserPerm_Load;
             ResumeLayout(false);
             PerformLayout();
         }

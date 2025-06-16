@@ -14,7 +14,7 @@ namespace ProyectoBD.Roles
 {
     public partial class FRMAdmRole : Form
     {
-        private Conexion conexionSql;
+        private Conexion conexionOracle;
         private int _idUsuario;
         private int idRol;
         const int ID_CREAR = 1;
@@ -26,7 +26,7 @@ namespace ProyectoBD.Roles
         {
             InitializeComponent();
             this.idRol = idRol;
-            conexionSql = conexion;
+            conexionOracle = conexion;
             CargarPantallas();
             InicializarCheckPermisos();
             _idUsuario = idUsuario;
@@ -36,7 +36,7 @@ namespace ProyectoBD.Roles
         {
             try
             {
-                var pantallas = conexionSql.ObtenerPantallas();
+                var pantallas = conexionOracle.ObtenerPantallas();
 
                 checkedListBoxPantallas.Items.Clear();
                 foreach (var pantalla in pantallas)
@@ -71,7 +71,7 @@ namespace ProyectoBD.Roles
 
         private void CargarPermisosAsignados(int idRol, int idPantalla)
         {
-            var permisosAsignados = conexionSql.ObtenerPermisosAsignados(idRol, idPantalla);
+            var permisosAsignados = conexionOracle.ObtenerPermisosAsignados(idRol, idPantalla);
 
             chkInsertar.Checked = permisosAsignados.Contains(ID_CREAR);
             chkModificar.Checked = permisosAsignados.Contains(ID_EDITAR);
@@ -92,39 +92,33 @@ namespace ProyectoBD.Roles
             List<int> permisosSeleccionados = new List<int>();
 
             if (chkInsertar.Checked)
-                permisosSeleccionados.Add(conexionSql.ObtenerIdPermisoPorNombre("Insertar"));
+                permisosSeleccionados.Add(conexionOracle.ObtenerIdPermisoPorNombre("Insertar"));
             if (chkModificar.Checked)
-                permisosSeleccionados.Add(conexionSql.ObtenerIdPermisoPorNombre("Modificar"));
+                permisosSeleccionados.Add(conexionOracle.ObtenerIdPermisoPorNombre("Modificar"));
             if (chkEliminar.Checked)
-                permisosSeleccionados.Add(conexionSql.ObtenerIdPermisoPorNombre("Eliminar"));
+                permisosSeleccionados.Add(conexionOracle.ObtenerIdPermisoPorNombre("Eliminar"));
             if (chkConsultar.Checked)
-                permisosSeleccionados.Add(conexionSql.ObtenerIdPermisoPorNombre("Consultar"));
-
-            if (permisosSeleccionados.Count == 0)
-            {
-                MessageBox.Show("Selecciona al menos un permiso.");
-                return;
-            }
+                permisosSeleccionados.Add(conexionOracle.ObtenerIdPermisoPorNombre("Consultar"));
 
             try
             {
                 foreach (Pantalla pantalla in checkedListBoxPantallas.CheckedItems)
                 {
-                    // Obtener los permisos actualmente asignados en la BD para esa pantalla
-                    var permisosActuales = conexionSql.ObtenerPermisosAsignados(idRol, pantalla.Id);
+                    // Obtener los permisos actualmente en la base de datos
+                    var permisosActuales = conexionOracle.ObtenerPermisosAsignados(idRol, pantalla.Id);
 
-                    // Agregar nuevos permisos
+                    // Agregar nuevos que no están
                     foreach (int idPermiso in permisosSeleccionados)
                     {
                         if (!permisosActuales.Contains(idPermiso))
-                            conexionSql.AsignarPermisoARol(idRol, pantalla.Id, idPermiso,_idUsuario);
+                            conexionOracle.AsignarPermisoARol(idRol, pantalla.Id, idPermiso, _idUsuario);
                     }
 
-                    // Eliminar permisos que se desmarcaron
+                    // Eliminar los que están pero ya no están en la selección
                     foreach (int idPermiso in permisosActuales)
                     {
                         if (!permisosSeleccionados.Contains(idPermiso))
-                            conexionSql.EliminarPermisoARol(idRol, pantalla.Id, idPermiso, _idUsuario);
+                            conexionOracle.EliminarPermisoARol(idRol, pantalla.Id, idPermiso, _idUsuario);
                     }
                 }
 
@@ -144,7 +138,11 @@ namespace ProyectoBD.Roles
             this.Close();
         }
 
+        private void FRMAdmRole_Load(object sender, EventArgs e)
+        {
 
+        }
     }
 }
+
 

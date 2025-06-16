@@ -43,6 +43,7 @@
             dgvUsuarios.Size = new Size(809, 335);
             dgvUsuarios.TabIndex = 0;
             dgvUsuarios.CellClick += dgvUsuarios_CellClick;
+            dgvUsuarios.CellContentClick += dgvUsuarios_CellContentClick;
             // 
             // label1
             // 

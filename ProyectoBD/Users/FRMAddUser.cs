@@ -34,7 +34,7 @@ namespace ProyectoBD.Users
                     .Build();
 
                 string cadenaConexionSql = config.GetConnectionString("DefaultConnection");
-         
+
 
                 conexionSql = new Conexion(cadenaConexionSql);
             }
@@ -93,5 +93,9 @@ namespace ProyectoBD.Users
             }
         }
 
+        private void FRMAddUser_Load(object sender, EventArgs e)
+        {
+
+        }
     }
 }

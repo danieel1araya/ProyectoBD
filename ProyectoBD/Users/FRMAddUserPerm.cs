@@ -21,7 +21,7 @@ namespace ProyectoBD.Users
         const int ID_EDITAR = 2;
         const int ID_ELIMINAR = 3;
         const int ID_VER = 4;
-        public FRMAddUserPerm(int idUsuario, Conexion conexion,int _idUsuario)
+        public FRMAddUserPerm(int idUsuario, Conexion conexion, int _idUsuario)
         {
             InitializeComponent();
             this.idUsuario = idUsuario;
@@ -94,27 +94,21 @@ namespace ProyectoBD.Users
             if (chkConsultar.Checked)
                 permisosSeleccionados.Add(conexionSql.ObtenerIdPermisoPorNombre("Consultar"));
 
-            if (permisosSeleccionados.Count == 0)
-            {
-                MessageBox.Show("Selecciona al menos un permiso.");
-                return;
-            }
-
             try
             {
                 foreach (Pantalla pantalla in checkedListBoxPantallas.CheckedItems)
                 {
-                    // Obtener los permisos actuales asignados al usuario para esa pantalla
+                    // Obtener los permisos actuales
                     var permisosActuales = conexionSql.ObtenerPermisosAsignadosUsuario(idUsuario, pantalla.Id);
 
-                    // Agregar permisos que no existan
+                    // Agregar nuevos que no están
                     foreach (int idPermiso in permisosSeleccionados)
                     {
                         if (!permisosActuales.Contains(idPermiso))
                             conexionSql.AsignarPermisoAUsuario(idUsuario, pantalla.Id, idPermiso, _idUsuario);
                     }
 
-                    // Quitar permisos desmarcados
+                    // Eliminar los que están pero ya no están en la selección
                     foreach (int idPermiso in permisosActuales)
                     {
                         if (!permisosSeleccionados.Contains(idPermiso))
@@ -135,6 +129,11 @@ namespace ProyectoBD.Users
             FRMUsuario frmUsuarios = new FRMUsuario(_idUsuario);
             frmUsuarios.Show();
             this.Close();
+        }
+
+        private void FRMAddUserPerm_Load(object sender, EventArgs e)
+        {
+
         }
     }
 }

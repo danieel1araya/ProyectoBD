@@ -58,7 +58,7 @@ namespace ProyectoBD
 
         public void CargarSistemas()
         {
-            var sistemas = conexionSql.ObtenerSistemas(); // Usa tu clase de conexión
+            var sistemas = conexionSql.ObtenerSistemasSistema(); 
 
             dgvSistemas.DataSource = null;
             dgvSistemas.DataSource = sistemas;
@@ -172,7 +172,7 @@ namespace ProyectoBD
                         NombreSistema = fila.Cells["NombreSistema"].Value.ToString()
                     };
 
-                    FRMEditSys frmEdit = new FRMEditSys(sistemaSeleccionado, conexionSql,_idUsuario);
+                    FRMEditSys frmEdit = new FRMEditSys(sistemaSeleccionado, conexionSql, _idUsuario);
                     frmEdit.Show();
                     this.Close();
                 }
@@ -191,21 +191,29 @@ namespace ProyectoBD
 
                     if (resultado == DialogResult.Yes)
                     {
-                        bool eliminado = conexionSql.EliminarSistema(idSistema,_idUsuario);
+                        try
+                        {
+                            bool eliminado = conexionSql.EliminarSistema(idSistema, _idUsuario);
 
-                        if (eliminado)
-                        {
-                            MessageBox.Show("Sistema eliminado correctamente.");
-                            this.Close();
-                            FRMSistema frm = new FRMSistema(_idUsuario);
-                            frm.Show();
+                            if (eliminado)
+                            {
+                                MessageBox.Show("Sistema eliminado correctamente.");
+                                this.Close();
+                                FRMSistema frm = new FRMSistema(_idUsuario);
+                                frm.Show();
+                            }
+                            else
+                            {
+                                MessageBox.Show("No se pudo eliminar el sistema.");
+                            }
                         }
-                        else
+                        catch (Exception ex)
                         {
-                            MessageBox.Show("No se pudo eliminar el sistema.");
+                            MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }
                     }
                 }
+
             }
         }
 
@@ -222,6 +230,11 @@ namespace ProyectoBD
             FRMHome frm_home = new FRMHome(_idUsuario);
             frm_home.Show();
             this.Hide();
+        }
+
+        private void dgvSistemas_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
         }
     }
 }

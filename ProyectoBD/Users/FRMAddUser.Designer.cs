@@ -116,6 +116,7 @@
             Name = "FRMAddUser";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "FRMAddUser";
+            Load += FRMAddUser_Load;
             ResumeLayout(false);
             PerformLayout();
         }

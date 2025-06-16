@@ -101,6 +101,7 @@
             cmbSistemas.Name = "cmbSistemas";
             cmbSistemas.Size = new Size(121, 23);
             cmbSistemas.TabIndex = 23;
+            cmbSistemas.SelectedIndexChanged += cmbSistemas_SelectedIndexChanged;
             // 
             // FRMAddPan
             // 

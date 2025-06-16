@@ -73,6 +73,7 @@
             dgvPantallas.Size = new Size(809, 335);
             dgvPantallas.TabIndex = 8;
             dgvPantallas.CellClick += dgvPantallas_CellClick;
+            dgvPantallas.CellContentClick += dgvPantallas_CellContentClick;
             // 
             // FRMPantalla
             // 

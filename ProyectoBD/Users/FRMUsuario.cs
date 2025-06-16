@@ -203,8 +203,8 @@ namespace ProyectoBD
                         Activo = Convert.ToInt32(fila.Cells["Activo"].Value)
                     };
 
-                  
-                    FRMEditUser frmEdit = new FRMEditUser(usuarioSeleccionado, conexionSql,_idUsuario);
+
+                    FRMEditUser frmEdit = new FRMEditUser(usuarioSeleccionado, conexionSql, _idUsuario);
                     frmEdit.Show();
                     this.Close();
                 }
@@ -224,18 +224,19 @@ namespace ProyectoBD
 
                     if (resultado == DialogResult.Yes)
                     {
-                        bool eliminado = conexionSql.EliminarUsuario(idUsuario, _idUsuario);
+                        string mensaje;
+                        bool eliminado = conexionSql.EliminarUsuario(idUsuario, _idUsuario, out mensaje);
 
                         if (eliminado)
                         {
-                            MessageBox.Show("Usuario eliminado correctamente.");
+                            MessageBox.Show(mensaje);
                             this.Close();
                             FRMUsuario frm = new FRMUsuario(_idUsuario);
                             frm.Show();
                         }
                         else
                         {
-                            MessageBox.Show("No se pudo eliminar el usuario.");
+                            MessageBox.Show("No se pudo eliminar el usuario.\n" + mensaje);
                         }
                     }
                 }
@@ -244,8 +245,8 @@ namespace ProyectoBD
                     var fila = dgvUsuarios.Rows[e.RowIndex];
                     int idUsuario = Convert.ToInt32(fila.Cells["Id"].Value);
 
-  
-                    FRMAddUserPerm frmPermisos = new FRMAddUserPerm(idUsuario, conexionSql,_idUsuario);
+
+                    FRMAddUserPerm frmPermisos = new FRMAddUserPerm(idUsuario, conexionSql, _idUsuario);
                     frmPermisos.Show();
                 }
 
@@ -254,8 +255,8 @@ namespace ProyectoBD
                     var fila = dgvUsuarios.Rows[e.RowIndex];
                     int idUsuario = Convert.ToInt32(fila.Cells["Id"].Value);
 
-         
-                    FRMAddUserRol frmRoles = new FRMAddUserRol(idUsuario, conexionSql,_idUsuario);
+
+                    FRMAddUserRol frmRoles = new FRMAddUserRol(idUsuario, conexionSql, _idUsuario);
                     frmRoles.Show();
                 }
 
@@ -275,6 +276,11 @@ namespace ProyectoBD
             FRMHome frm_home = new FRMHome(_idUsuario);
             frm_home.Show();
             this.Hide();
+        }
+
+        private void dgvUsuarios_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
         }
     }
 }

@@ -157,6 +157,7 @@
             Name = "FRMAdmRole";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "FRMAdmRole";
+            Load += FRMAdmRole_Load;
             ResumeLayout(false);
             PerformLayout();
         }

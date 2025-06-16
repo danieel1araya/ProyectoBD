@@ -1,17 +1,14 @@
 using System;
-using System.Collections.Generic;
 using System.Windows.Forms;
-using DAL;
+using DAL; // Aquí debe estar ConexionOracle
 using Microsoft.Extensions.Configuration;
 using System.IO;
-using BAL;
 
 namespace ProyectoBD
 {
     public partial class FRMLogin : Form
     {
-        private Conexion conexionSql;
-        private ConexionOracle conexionOracle;
+        private Conexion conexionOracle;
 
         public FRMLogin()
         {
@@ -28,11 +25,9 @@ namespace ProyectoBD
                     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                     .Build();
 
-                string cadenaConexionSql = config.GetConnectionString("DefaultConnection");
                 string cadenaConexionOracle = config.GetConnectionString("OracleConnection");
 
-                conexionSql = new Conexion(cadenaConexionSql);
-                conexionOracle = new ConexionOracle(cadenaConexionOracle);
+                conexionOracle = new Conexion(cadenaConexionOracle);
             }
             catch (Exception ex)
             {
@@ -45,26 +40,33 @@ namespace ProyectoBD
             string usuario = txtUsuario.Text.Trim();
             string contrasena = txtContrasena.Text.Trim();
 
-            if (!conexionSql.UsuarioExiste(usuario))
+            try
             {
-                MessageBox.Show("El usuario no existe.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
+                if (!conexionOracle.UsuarioExiste(usuario))
+                {
+                    MessageBox.Show("El usuario no existe.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                if (conexionOracle.ValidarCredenciales(usuario, contrasena))
+                {
+                    int idUsuario = conexionOracle.ObtenerIdUsuario(usuario);
+
+                    // Registramos inicio de sesión en bitácora:
+                    conexionOracle.InsertarBitacora(idUsuario, $"Usuario {usuario} inició sesión.");
+
+                    FRMHome home = new FRMHome(idUsuario);
+                    home.Show();
+                    this.Hide();
+                }
+                else
+                {
+                    MessageBox.Show("Usuario o contraseña incorrectos.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
-
-            if (conexionSql.ValidarCredenciales(usuario, contrasena))
+            catch (Exception ex)
             {
-                int idUsuario = conexionSql.ObtenerIdUsuario(usuario);
-
-                // Registramos inicio de sesión en bitácora:
-                conexionSql.InsertarBitacora(idUsuario, $"Usuario {usuario} inicio sesión.");
-
-                FRMHome home = new FRMHome(idUsuario);
-                home.Show();
-                this.Hide();
-            }
-            else
-            {
-                MessageBox.Show("Usuario o contraseña incorrectos.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Error en el proceso de login: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
