@@ -38,6 +38,7 @@
             chkInsertar = new CheckBox();
             checkedListBoxPantallas = new CheckedListBox();
             label1 = new Label();
+            comboBoxSistemas = new ComboBox();
             SuspendLayout();
             // 
             // btnCancelar
@@ -123,7 +124,7 @@
             // checkedListBoxPantallas
             // 
             checkedListBoxPantallas.FormattingEnabled = true;
-            checkedListBoxPantallas.Location = new Point(43, 91);
+            checkedListBoxPantallas.Location = new Point(43, 114);
             checkedListBoxPantallas.Name = "checkedListBoxPantallas";
             checkedListBoxPantallas.Size = new Size(293, 274);
             checkedListBoxPantallas.TabIndex = 21;
@@ -139,11 +140,21 @@
             label1.TabIndex = 20;
             label1.Text = "Administrar permisos del usuario";
             // 
+            // comboBoxSistemas
+            // 
+            comboBoxSistemas.FormattingEnabled = true;
+            comboBoxSistemas.Location = new Point(43, 84);
+            comboBoxSistemas.Name = "comboBoxSistemas";
+            comboBoxSistemas.Size = new Size(121, 23);
+            comboBoxSistemas.TabIndex = 30;
+            comboBoxSistemas.SelectedIndexChanged += comboBoxSistemas_SelectedIndexChanged;
+            // 
             // FRMAddUserPerm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
+            Controls.Add(comboBoxSistemas);
             Controls.Add(btnCancelar);
             Controls.Add(btnAsignar);
             Controls.Add(label3);
@@ -174,5 +185,6 @@
         private CheckBox chkInsertar;
         private CheckedListBox checkedListBoxPantallas;
         private Label label1;
+        private ComboBox comboBoxSistemas;
     }
 }

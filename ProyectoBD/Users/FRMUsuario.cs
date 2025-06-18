@@ -89,18 +89,6 @@ namespace ProyectoBD
                 grid.Columns.Add(btnEditar);
             }
 
-            if (!grid.Columns.Contains("Eliminar"))
-            {
-                var btnEliminar = new DataGridViewButtonColumn
-                {
-                    Name = "Eliminar",
-                    HeaderText = "",
-                    Text = "Eliminar",
-                    UseColumnTextForButtonValue = true,
-                    Width = 75,
-                };
-                grid.Columns.Add(btnEliminar);
-            }
             if (!grid.Columns.Contains("Permisos"))
             {
                 var btnPermisos = new DataGridViewButtonColumn
@@ -209,37 +197,6 @@ namespace ProyectoBD
                     this.Close();
                 }
 
-                if (columna == "Eliminar")
-                {
-                    var fila = dgvUsuarios.Rows[e.RowIndex];
-
-                    int idUsuario = Convert.ToInt32(fila.Cells["Id"].Value);
-                    string nombreUsuario = fila.Cells["Usuario"].Value.ToString();
-
-                    // Confirmación antes de eliminar
-                    var resultado = MessageBox.Show($"¿Seguro que quieres eliminar al usuario '{nombreUsuario}'?",
-                                                    "Confirmar eliminación",
-                                                    MessageBoxButtons.YesNo,
-                                                    MessageBoxIcon.Warning);
-
-                    if (resultado == DialogResult.Yes)
-                    {
-                        string mensaje;
-                        bool eliminado = conexionSql.EliminarUsuario(idUsuario, _idUsuario, out mensaje);
-
-                        if (eliminado)
-                        {
-                            MessageBox.Show(mensaje);
-                            this.Close();
-                            FRMUsuario frm = new FRMUsuario(_idUsuario);
-                            frm.Show();
-                        }
-                        else
-                        {
-                            MessageBox.Show("No se pudo eliminar el usuario.\n" + mensaje);
-                        }
-                    }
-                }
                 if (columna == "Permisos")
                 {
                     var fila = dgvUsuarios.Rows[e.RowIndex];

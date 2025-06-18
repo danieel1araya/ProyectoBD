@@ -27,16 +27,32 @@ namespace ProyectoBD.Roles
             InitializeComponent();
             this.idRol = idRol;
             conexionOracle = conexion;
-            CargarPantallas();
+            CargarSistemas();
             InicializarCheckPermisos();
             _idUsuario = idUsuario;
         }
 
-        private void CargarPantallas()
+        private void CargarSistemas()
         {
             try
             {
-                var pantallas = conexionOracle.ObtenerPantallas();
+                var sistemas = conexionOracle.ObtenerSistemas();
+
+                comboBoxSistemas.DataSource = sistemas;
+                comboBoxSistemas.DisplayMember = "NombreSistema";
+                comboBoxSistemas.ValueMember = "Id";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error al cargar sistemas: " + ex.Message);
+            }
+        }
+
+        private void CargarPantallasPorSistema(int idSistema)
+        {
+            try
+            {
+                var pantallas = conexionOracle.ObtenerPantallasPorSistema(idSistema);
 
                 checkedListBoxPantallas.Items.Clear();
                 foreach (var pantalla in pantallas)
@@ -136,6 +152,14 @@ namespace ProyectoBD.Roles
             FRMRoles fRMRoles = new FRMRoles(_idUsuario);
             fRMRoles.Show();
             this.Close();
+        }
+
+        private void comboBoxSistemas_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (comboBoxSistemas.SelectedItem is Sistema sistemaSeleccionado)
+            {
+                CargarPantallasPorSistema(sistemaSeleccionado.Id);
+            }
         }
 
         private void FRMAdmRole_Load(object sender, EventArgs e)

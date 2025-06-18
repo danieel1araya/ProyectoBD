@@ -89,7 +89,7 @@
             // 
             flowLayoutPanelRoles.Location = new Point(551, 113);
             flowLayoutPanelRoles.Name = "flowLayoutPanelRoles";
-            flowLayoutPanelRoles.Size = new Size(200, 221);
+            flowLayoutPanelRoles.Size = new Size(227, 221);
             flowLayoutPanelRoles.TabIndex = 7;
             // 
             // btnSalir

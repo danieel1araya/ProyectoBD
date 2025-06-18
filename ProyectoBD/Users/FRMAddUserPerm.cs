@@ -27,15 +27,32 @@ namespace ProyectoBD.Users
             this.idUsuario = idUsuario;
             this._idUsuario = _idUsuario;
             conexionSql = conexion;
-            CargarPantallas();
+            CargarSistemas();
             InicializarCheckPermisos();
         }
 
-        private void CargarPantallas()
+        private void CargarSistemas()
         {
             try
             {
-                var pantallas = conexionSql.ObtenerPantallas();
+                var sistemas = conexionSql.ObtenerSistemas(); 
+
+                comboBoxSistemas.DataSource = sistemas;
+                comboBoxSistemas.DisplayMember = "NombreSistema";
+                comboBoxSistemas.ValueMember = "Id";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error al cargar sistemas: " + ex.Message);
+            }
+        }
+
+
+        private void CargarPantallasPorSistema(int idSistema)
+        {
+            try
+            {
+                var pantallas = conexionSql.ObtenerPantallasPorSistema(idSistema); 
 
                 checkedListBoxPantallas.Items.Clear();
                 foreach (var pantalla in pantallas)
@@ -48,6 +65,7 @@ namespace ProyectoBD.Users
                 MessageBox.Show("Error cargando pantallas: " + ex.Message);
             }
         }
+
 
         private void InicializarCheckPermisos()
         {
@@ -130,6 +148,15 @@ namespace ProyectoBD.Users
             frmUsuarios.Show();
             this.Close();
         }
+
+        private void comboBoxSistemas_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (comboBoxSistemas.SelectedItem is Sistema sistemaSeleccionado)
+            {
+                CargarPantallasPorSistema(sistemaSeleccionado.Id);
+            }
+        }
+
 
         private void FRMAddUserPerm_Load(object sender, EventArgs e)
         {

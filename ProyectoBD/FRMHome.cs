@@ -48,5 +48,12 @@ namespace ProyectoBD
             frm_pantallas.Show();
             this.Hide();
         }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            FRMLogin fRMLogin = new FRMLogin();
+            fRMLogin.Show();
+            this.Close();
+        }
     }
 }

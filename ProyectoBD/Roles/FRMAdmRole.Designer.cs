@@ -38,6 +38,7 @@
             label3 = new Label();
             btnAsignar = new Button();
             btnCancelar = new Button();
+            comboBoxSistemas = new ComboBox();
             SuspendLayout();
             // 
             // label1
@@ -53,7 +54,7 @@
             // checkedListBoxPantallas
             // 
             checkedListBoxPantallas.FormattingEnabled = true;
-            checkedListBoxPantallas.Location = new Point(48, 89);
+            checkedListBoxPantallas.Location = new Point(48, 112);
             checkedListBoxPantallas.Name = "checkedListBoxPantallas";
             checkedListBoxPantallas.Size = new Size(293, 274);
             checkedListBoxPantallas.TabIndex = 11;
@@ -139,11 +140,21 @@
             btnCancelar.UseVisualStyleBackColor = true;
             btnCancelar.Click += btnSalir_Click;
             // 
+            // comboBoxSistemas
+            // 
+            comboBoxSistemas.FormattingEnabled = true;
+            comboBoxSistemas.Location = new Point(48, 84);
+            comboBoxSistemas.Name = "comboBoxSistemas";
+            comboBoxSistemas.Size = new Size(121, 23);
+            comboBoxSistemas.TabIndex = 31;
+            comboBoxSistemas.SelectedIndexChanged += comboBoxSistemas_SelectedIndexChanged;
+            // 
             // FRMAdmRole
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
+            Controls.Add(comboBoxSistemas);
             Controls.Add(btnCancelar);
             Controls.Add(btnAsignar);
             Controls.Add(label3);
@@ -174,5 +185,6 @@
         private Label label3;
         private Button btnAsignar;
         private Button btnCancelar;
+        private ComboBox comboBoxSistemas;
     }
 }

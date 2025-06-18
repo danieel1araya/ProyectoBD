@@ -1129,6 +1129,52 @@ END;";
             return pantallas;
         }
 
+  public List<Pantalla> ObtenerPantallasPorSistema(int idSistema)
+{
+    List<Pantalla> pantallas = new List<Pantalla>();
+
+    using (OracleConnection connection = new OracleConnection(StringConexion))
+    {
+        connection.Open();
+        try
+        {
+            string query = @"
+                SELECT p.IDPantalla, p.IDSistema, s.NombreSistema, p.NombrePantalla
+                FROM Pantallas p
+                INNER JOIN Sistemas s ON p.IDSistema = s.IDSistema
+                WHERE p.IDSistema = :idSistema";
+
+            using (OracleCommand command = new OracleCommand(query, connection))
+            {
+                command.CommandType = CommandType.Text;
+                command.Parameters.Add(new OracleParameter("idSistema", idSistema));
+
+                using (OracleDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        Pantalla pantalla = new Pantalla
+                        {
+                            Id = reader.GetInt32(0),
+                            IdSistema = reader.GetInt32(1),
+                            NombreSistema = reader.GetString(2),
+                            NombrePantalla = reader.GetString(3)
+                        };
+                        pantallas.Add(pantalla);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("Error al obtener pantallas por sistema: " + ex.Message);
+        }
+    }
+
+    return pantallas;
+}
+
+
 
 
 

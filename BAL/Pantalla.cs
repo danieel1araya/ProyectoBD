@@ -15,7 +15,7 @@ namespace BAL
 
         public override string ToString()
         {
-            return $"{NombreSistema} - {NombrePantalla}";
+            return NombrePantalla;
         }
     }
 
